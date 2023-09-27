@@ -1,0 +1,9 @@
+{
+    "Ausführungstransitionen":[{"Eingangszustand": 0, "Ausgangszustand": 1}],
+    "Identifikation":"msb",
+    "uuid": "545ddc14-efa6-4abe-999d-1c7dc4d34a3f",
+    "name": "msbclient",
+    "description": "msbclient",
+    "token": "1c7dc4d34a3f",
+    "target_interface": "http://ws.msb.dia.cell.vfk.fraunhofer.de"
+}
