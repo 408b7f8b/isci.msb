@@ -147,6 +147,16 @@ namespace isci.msb
                         switch (eintrag.type)
                         {
                             case Datentypen.Bool: structure.dateneinträge[gespeichert.Key].value = (bool)val; break;
+                            case Datentypen.Int8: structure.dateneinträge[gespeichert.Key].value = (SByte)val; break;
+                            case Datentypen.Int16: structure.dateneinträge[gespeichert.Key].value = (Int16)val; break;
+                            case Datentypen.Int32: structure.dateneinträge[gespeichert.Key].value = (Int32)val; break;
+                            case Datentypen.UInt8: structure.dateneinträge[gespeichert.Key].value = (byte)val; break;
+                            case Datentypen.UInt16: structure.dateneinträge[gespeichert.Key].value = (UInt16)val; break;
+                            case Datentypen.UInt32: structure.dateneinträge[gespeichert.Key].value = (UInt32)val; break;
+                            case Datentypen.String: structure.dateneinträge[gespeichert.Key].value = (String)val; break;
+                            case Datentypen.Float: structure.dateneinträge[gespeichert.Key].value = (float)val; break;
+                            case Datentypen.Double: structure.dateneinträge[gespeichert.Key].value = (Double)val; break;
+                            default:continue;
                         }
                         eintrag.Schreiben();
                     }
