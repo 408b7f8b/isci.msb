@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using isci.Allgemein;
 using isci.Daten;
 using isci.Beschreibung;
+using Serilog;
 
 namespace isci.msb
 {
@@ -15,6 +16,11 @@ namespace isci.msb
         public Konfiguration(string datei) : base(datei) {
 
         }
+    }
+
+    public class Entwicklungsanwendung {
+        public byte hallo, hallo2;
+
     }
 
     class Program
@@ -35,7 +41,8 @@ namespace isci.msb
         }
         public static void msbCallback_FunctionCallMethod([Fraunhofer.IPA.MSB.Client.API.Attributes.MsbFunctionParameter(Name = "val")]System.Collections.Generic.Dictionary<string, object> val, Fraunhofer.IPA.MSB.Client.API.Model.FunctionCallInfo info)
         {
-            foreach (var obj in val)
+            var dataObject = ((Newtonsoft.Json.Linq.JObject)val["dataObject"]).ToObject<Dictionary<string, object>>();
+            foreach (var obj in dataObject)
             {
                 if (puffer.ContainsKey(obj.Key))
                 {
@@ -75,15 +82,67 @@ namespace isci.msb
 
             foreach (var f in Funktionen)
             {
-                var df = new Fraunhofer.IPA.MSB.Client.Websocket.Model.DataFormat();
+                var rootObject = new Newtonsoft.Json.Linq.JObject();
+                var anwObjekt = new Newtonsoft.Json.Linq.JObject();
+                anwObjekt.Add("type", "object");
+                anwObjekt.Add("additionalProperties", false);
+                var required_array = new Newtonsoft.Json.Linq.JArray();
+                anwObjekt.Add("required", required_array);
+                var properties = new Newtonsoft.Json.Linq.JObject();
+
+                foreach (var element in f.Ziele)
+                {
+                    required_array.Add(element);
+                    var type = structure.dateneinträge[element].Typ();
+                    if (Fraunhofer.IPA.MSB.Client.API.OpenApi.OpenApiMapper.IsPrimitiveDataType(type))
+                    {
+                        var deserializedSchema = Fraunhofer.IPA.MSB.Client.API.OpenApi.OpenApiMapper.GetJsonSchemaOfType(type);
+                        properties.Add(element, deserializedSchema);
+                    }
+                }
+
+                anwObjekt.Add("properties", properties);
+                rootObject.Add(konfiguration.Anwendung, anwObjekt);
+
+                var konvertiert = rootObject.ToObject<Dictionary<string, object>>();
+                konvertiert.Add("dataObject", new Dictionary<string, string>() { { "$ref", $"#/definitions/{konfiguration.Anwendung}" } });
+
+                var df = new Fraunhofer.IPA.MSB.Client.Websocket.Model.DataFormat(konvertiert);
+
                 var mInfo = typeof(Program).GetMethod("msbCallback_FunctionCallMethod");
-                var f_ = new Fraunhofer.IPA.MSB.Client.API.Model.Function(f.Identifikation, f.Name, f.Beschreibung, null, mInfo, null);
+                var f_ = new Fraunhofer.IPA.MSB.Client.API.Model.Function(f.Identifikation, f.Name, f.Beschreibung, df, mInfo);
                 msbApplication.AddFunction(f_);
             }
 
             foreach (var e in Events)
             {
-                var df = new Fraunhofer.IPA.MSB.Client.Websocket.Model.DataFormat();
+                var rootObject = new Newtonsoft.Json.Linq.JObject();
+                var anwObjekt = new Newtonsoft.Json.Linq.JObject();
+                anwObjekt.Add("type", "object");
+                anwObjekt.Add("additionalProperties", false);
+                var required_array = new Newtonsoft.Json.Linq.JArray();
+                anwObjekt.Add("required", required_array);
+                var properties = new Newtonsoft.Json.Linq.JObject();
+
+                foreach (var element in e.Elemente)
+                {
+                    required_array.Add(element);
+                    var type = structure.dateneinträge[e.Elemente[0]].Typ();
+                    if (Fraunhofer.IPA.MSB.Client.API.OpenApi.OpenApiMapper.IsPrimitiveDataType(type))
+                    {
+                        var deserializedSchema = Fraunhofer.IPA.MSB.Client.API.OpenApi.OpenApiMapper.GetJsonSchemaOfType(type);
+                        properties.Add(element, deserializedSchema);
+                    }
+                }
+
+                anwObjekt.Add("properties", properties);
+                rootObject.Add(konfiguration.Anwendung, anwObjekt);
+
+                var konvertiert = rootObject.ToObject<Dictionary<string, object>>();
+                konvertiert.Add("dataObject", new Dictionary<string, string>() { { "$ref", $"#/definitions/{konfiguration.Anwendung}" } });
+
+                var df = new Fraunhofer.IPA.MSB.Client.Websocket.Model.DataFormat(konvertiert);
+                
                 var e_ = new Fraunhofer.IPA.MSB.Client.API.Model.Event(e.Identifikation, e.Name, e.Beschreibung, df);
                 msbApplication.AddEvent(e_);
 
@@ -104,9 +163,15 @@ namespace isci.msb
         static Konfiguration konfiguration;
         static void Main(string[] args)
         {
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(outputTemplate:
+                    "[{Timestamp:yyyy-MM-dd - HH:mm:ss}] [{SourceContext:s}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+
             konfiguration = new Konfiguration("konfiguration.json");
 
-            msbClient = new MsbClientFP(konfiguration.target_interface);
+            msbClient = new Fraunhofer.IPA.MSB.Client.Websocket.MsbClient(konfiguration.target_interface);
             msbClient.Connected += msbCallback_Connected;
             msbClient.Disconnected += msbCallback_Disconnected;
             msbClient.Registered += msbCallback_Registered;
@@ -116,7 +181,7 @@ namespace isci.msb
             structure = new Datenstruktur(konfiguration.OrdnerDatenstruktur);
             structure.DatenmodelleEinhängenAusOrdner(konfiguration.OrdnerDatenmodelle);
             
-            msbApplication = new Fraunhofer.IPA.MSB.Client.API.Model.Application(konfiguration.uuid, konfiguration.name, konfiguration.description, konfiguration.token);
+            msbApplication = new Fraunhofer.IPA.MSB.Client.API.Model.Application(konfiguration.uuid, konfiguration.Anwendung, konfiguration.description, konfiguration.token);
             ApplikationBauen();
 
             var beschreibung = new Modul(konfiguration.Identifikation, "isci.msb");
@@ -124,6 +189,9 @@ namespace isci.msb
             beschreibung.Beschreibung = "Modul MSB";
             beschreibung.Speichern(konfiguration.OrdnerBeschreibungen + "/" + konfiguration.Identifikation + ".json");
 
+            /*msbClient.AllowSslCertificateNameMismatch = true;
+            msbClient.AllowSslUnstrustedCertificate = true;
+            msbClient.AllowSslCertificateChainErrors = true;*/
             msbClient.ConnectAsync();
             
             structure.Start();

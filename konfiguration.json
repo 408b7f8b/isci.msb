@@ -5,5 +5,5 @@
     "name": "msbclient",
     "description": "msbclient",
     "token": "1c7dc4d34a3f",
-    "target_interface": "http://ws.msb.dia.cell.vfk.fraunhofer.de"
+    "target_interface": "ws://ws.msb.dia.cell.vfk.fraunhofer.de"
 }
