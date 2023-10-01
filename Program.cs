@@ -182,6 +182,12 @@ namespace isci.msb
             structure.DatenmodelleEinhängenAusOrdner(konfiguration.OrdnerDatenmodelle);
             
             msbApplication = new Fraunhofer.IPA.MSB.Client.API.Model.Application(konfiguration.uuid, konfiguration.Anwendung, konfiguration.description, konfiguration.token);
+
+            var testev = new Fraunhofer.IPA.MSB.Client.API.Model.Event("testevent", "testevent", "testevent", typeof(Entwicklungsanwendung));
+            msbApplication.AddEvent(testev);
+
+
+
             ApplikationBauen();
 
             var beschreibung = new Modul(konfiguration.Identifikation, "isci.msb");
@@ -201,7 +207,22 @@ namespace isci.msb
             
             while(true)
             {
-                Zustand.Lesen();
+                var eventData = new Fraunhofer.IPA.MSB.Client.API.Model.EventData(testev);
+                eventData.Value = new Entwicklungsanwendung();
+                msbClient.PublishAsync(msbApplication, eventData);
+                System.Threading.Thread.Sleep(30000);
+
+                /*var ev1 = EreignisEvent.ElementAt(0);
+                var eventData = new Fraunhofer.IPA.MSB.Client.API.Model.EventData(ev1.Value);
+                var data = new Dictionary<string, object>();
+                foreach (var element in ev1.Key.Elemente)
+                {
+                    data.Add(element, structure.dateneinträge[element].value);
+                }
+                eventData.Value = data;
+                msbClient.PublishAsync(msbApplication, eventData);*/
+                
+                /*Zustand.Lesen();
 
                 var erfüllteTransitionen = konfiguration.Ausführungstransitionen.Where(a => a.Eingangszustand == (System.Int32)Zustand.value);
                 if (erfüllteTransitionen.Count<Ausführungstransition>() <= 0) continue;
@@ -253,7 +274,7 @@ namespace isci.msb
                 }
 
                 Zustand.value = erfüllteTransitionen.First<Ausführungstransition>().Ausgangszustand;
-                Zustand.Schreiben();
+                Zustand.Schreiben();*/
             }
         }
     }
